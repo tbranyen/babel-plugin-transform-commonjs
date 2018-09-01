@@ -1,9 +1,5 @@
 # Babel Transform: CommonJS to ES Modules
 
-```
-npm install --save-dev babel-plugin-transform-commonjs
-```
-
 A Babel 7 compatible transform to convert CommonJS modules into the ES Module
 specification. This was created specifically for a bundler, but has many uses
 outside of that context.
@@ -20,18 +16,32 @@ What not to expect:
 - Hoisting tricks, excessive code rewriting
 - Browser support for core Node modules
 
+```sh
+npm install --save-dev babel-plugin-transform-commonjs
+```
+
+Update your babel configuration:
+
+```json
+{
+  "plugins": "transform-commonjs"
+}
+```
+
+Now code like this:
+
 ```javascript
-const input = `
-  var a = require('path');
-`;
+var { readFileSync } = require('path');
+exports.readFileSync = readFileSync;
+```
 
-const { code } = await transformAsync(input);
+Will turn into this:
 
-equal(code, `
-  import a from "path";
-  var module = {
-    exports: {}
-  };
-  export default module.exports;
-`);
+``` javascript
+import { readFileSync as _readFileSync } from "path";
+var module = {
+  exports: {}
+};
+export const readFileSync = _readFileSync;
+export default module.exports;
 ```

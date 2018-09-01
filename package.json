@@ -2,7 +2,7 @@
   "name": "babel-plugin-transform-commonjs",
   "version": "1.0.0-alpha",
   "description": "A Babel plugin transform to convert CommonJS to ESM",
-  "main": "index.js",
+  "main": "dist/index.js",
   "scripts": {
     "build": "tsc index.ts",
     "watch": "tsc index.ts -w",
