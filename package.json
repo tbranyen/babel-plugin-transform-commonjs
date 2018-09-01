@@ -1,0 +1,22 @@
+{
+  "name": "babel-plugin-transform-commonjs",
+  "version": "1.0.0-alpha",
+  "description": "A Babel plugin transform to convert CommonJS to ESM",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc index.ts",
+    "watch": "tsc index.ts -w",
+    "test": "mocha"
+  },
+  "keywords": [],
+  "author": "Tim Branyen (@tbranyen)",
+  "license": "MIT",
+  "dependencies": {
+    "@babel/helper-module-transforms": "^7.0.0",
+    "@babel/helper-plugin-utils": "^7.0.0"
+  },
+  "devDependencies": {
+    "mocha": "^5.2.0",
+    "ts-node": "7.0.1"
+  }
+}
