@@ -81,6 +81,26 @@ describe('Transform CommonJS', function() {
         export default module.exports;
       `);
     });
+
+    it('can support a memberexpression import assignment', async () => {
+      const input = `
+        var ArrayObservable_1 = require('./ArrayObservable');
+        exports.of = ArrayObservable_1.ArrayObservable.of;
+      `;
+
+      const { code } = await transformAsync(input, { ...defaults });
+
+      equal(code, format`
+        import _ArrayObservable from "./ArrayObservable";
+        var module = {
+          exports: {}
+        };
+        var ArrayObservable_1 = _ArrayObservable;
+        exports.of = ArrayObservable_1.ArrayObservable.of;
+        export const of = ArrayObservable_1.ArrayObservable.of;
+        export default module.exports;
+      `);
+    });
   });
 
   describe('Imports', () => {

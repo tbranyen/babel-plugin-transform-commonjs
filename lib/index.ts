@@ -230,7 +230,9 @@ export default declare((api, options) => {
 
                   // Ensure that the right hand side gets replaced properly
                   // for the original code.
-                  path.get('right').replaceWith(t.identifier(prop.name));;
+                  if (prop.name) {
+                    path.get('right').replaceWith(t.identifier(prop.name));;
+                  }
                 }
               }
             }
