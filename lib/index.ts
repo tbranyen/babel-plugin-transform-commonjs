@@ -1,12 +1,4 @@
 import { declare } from '@babel/helper-plugin-utils';
-import {
-  isModule,
-  rewriteModuleStatementsAndPrepareHeader,
-  isSideEffectImport,
-  buildNamespaceInitStatements,
-  ensureStatementsHoisted,
-} from '@babel/helper-module-transforms';
-import simplifyAccess from '@babel/helper-simple-access';
 import { template, types as t } from '@babel/core';
 
 export default declare((api, options) => {
@@ -230,11 +222,16 @@ export default declare((api, options) => {
                 // If we're in the root scope then replace the node. Otherwise
                 // we cannot guarentee a named export.
                 if (path.scope.path.isProgram()) {
-                  // The order matters here, we need to rename first, and then
-                  // replace.
-                  path.scope.rename(path.node.right.name, prop.name);
                   state.renamed.set(path.node.right.name, prop.name);
-                  path.parentPath.replaceWith(decl);
+                  path.scope.rename(path.node.right.name, prop.name);
+
+                  // Ensure that the original `exports.` assignment is
+                  // preserved.
+                  path.parentPath.insertAfter(decl);
+
+                  // Ensure that the right hand side gets replaced properly
+                  // for the original code.
+                  path.get('right').replaceWith(t.identifier(prop.name));;
                 }
               }
             }

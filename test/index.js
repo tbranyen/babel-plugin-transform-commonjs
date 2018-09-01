@@ -245,6 +245,7 @@ describe('Transform CommonJS', function() {
         var module = {
           exports: {}
         };
+        exports.a = _a;
         export const a = _a;
         export default module.exports;
       `);
@@ -266,6 +267,27 @@ describe('Transform CommonJS', function() {
         {
           exports.a = true;
         }
+        export default module.exports;
+      `);
+    });
+
+    it('can support reading named exports from exports object', async () => {
+      const input = `
+        var { readFileSync } = require('path');
+        exports.readFileSync = readFileSync;
+        console.log(module.exports.readFileSync);
+      `;
+
+      const { code } = await transformAsync(input, { ...defaults });
+
+      equal(code, format`
+        import { readFileSync as _readFileSync } from "path";
+        var module = {
+          exports: {}
+        };
+        exports.readFileSync = _readFileSync;
+        export const readFileSync = _readFileSync;
+        console.log(module.exports.readFileSync);
         export default module.exports;
       `);
     });
@@ -320,6 +342,7 @@ describe('Transform CommonJS', function() {
           exports: {}
         };
         var _a = _path;
+        exports.a = _a;
         export const a = _a;
         export default module.exports;
       `);
@@ -338,6 +361,7 @@ describe('Transform CommonJS', function() {
         var module = {
           exports: {}
         };
+        exports.readFileSync = _readFileSync;
         export const readFileSync = _readFileSync;
         export default module.exports;
       `);
