@@ -42,6 +42,7 @@ import { readFileSync as _readFileSync } from "path";
 var module = {
   exports: {}
 };
+exports.readFileSync = _readFileSync;
 export const readFileSync = _readFileSync;
 export default module.exports;
 ```
