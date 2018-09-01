@@ -1,6 +1,6 @@
 {
   "name": "babel-plugin-transform-commonjs",
-  "version": "1.0.0-beta",
+  "version": "1.0.0-beta.1",
   "description": "A Babel plugin transform to convert CommonJS to ESM",
   "main": "dist/index.js",
   "scripts": {
