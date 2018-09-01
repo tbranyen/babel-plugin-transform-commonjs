@@ -7,7 +7,7 @@ outside of that context.
 What to expect:
 
 - A transform that can transform a majority of CommonJS to ES Modules
-- The integrity of `module.exports` in-tact, no tricks to separate this object
+- The integrity of `module.exports` intact, no tricks to separate this object
 - Non-static requires are turned into incompatible dynamic `import(...)`s
 
 What not to expect:
