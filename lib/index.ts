@@ -5,11 +5,17 @@ export default declare((api, options) => {
   api.assertVersion(7);
 
   const {} = options;
+  const state = { globals: new Set(), renamed: new Map() };
 
   return {
+    post() {
+      state.globals.clear();
+      state.renamed.clear();
+    },
+
     visitor: {
       Program: {
-        enter(path, state) {
+        enter(path) {
           const moduleExports = t.variableDeclaration('var', [
             t.variableDeclarator(
               t.identifier('module'),
@@ -36,7 +42,7 @@ export default declare((api, options) => {
       },
 
       VariableDeclarator: {
-        enter(path, state) {
+        enter(path) {
           const programPath = path.scope.getProgramParent().path;
           const { name } = path.node.id;
 
@@ -50,13 +56,11 @@ export default declare((api, options) => {
       },
 
       CallExpression: {
-        enter(path, state) {
+        enter(path) {
           const { node } = path;
 
-          state.globals = state.globals || new Set();
-
           // Look for `require()` any renaming is assumed to be intentionally
-          // done to break this kind of check, so we won't look for aliases.
+          // done to break state kind of check, so we won't look for aliases.
           if (t.isIdentifier(node.callee) && node.callee.name === 'require') {
             // Check for nested string and template literals.
             const isString = t.isStringLiteral(node.arguments[0]);
@@ -121,7 +125,7 @@ export default declare((api, options) => {
                 id = path.scope.generateUidIdentifier(str.value);
               }
 
-              // Add this global name to the list.
+              // Add state global name to the list.
               state.globals.add(id.name);
 
               // Create an import declaration.
@@ -148,7 +152,7 @@ export default declare((api, options) => {
                   )
                 );
               }
-              // If we generated a new identifier for this, replace the inline
+              // If we generated a new identifier for state, replace the inline
               // call with the variable.
               else if (!oldId) {
                 path.replaceWith(id);
@@ -163,18 +167,16 @@ export default declare((api, options) => {
       },
 
       ImportDefaultSpecifier: {
-        enter(path, state) {
+        enter(path) {
           path.scope.getProgramParent().registerBinding(path.node.local.name, path);
         }
       },
 
       ImportSpecifier: {
-        enter(path, state) {
-          state.renamed = state.renamed || new Map();
-
+        enter(path) {
           const { name } = path.node.local;
 
-          // If this import was renamed, ensure the source reflects it.
+          // If state import was renamed, ensure the source reflects it.
           if (state.renamed.has(name)) {
             const oldName = t.identifier(name);
             const newName = t.identifier(state.renamed.get(name));
@@ -189,10 +191,7 @@ export default declare((api, options) => {
       },
 
       AssignmentExpression: {
-        enter(path, state) {
-          state.globals = state.globals || new Set();
-          state.renamed = state.renamed || new Map();
-
+        enter(path) {
           // Check for module.exports.
           if (t.isMemberExpression(path.node.left)) {
             if (t.isIdentifier(path.node.left.object)) {

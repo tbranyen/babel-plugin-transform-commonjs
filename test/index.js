@@ -1,7 +1,7 @@
 const { throws, equal, deepEqual } = require('assert');
 const { transformAsync } = require('@babel/core');
 const { format } = require('./_utils');
-const plugin = require('../index.ts');
+const plugin = require('../lib/index.ts');
 
 describe('Transform CommonJS', function() {
   const defaults = {
