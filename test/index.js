@@ -22,6 +22,7 @@ describe('Transform CommonJS', function() {
         var module = {
           exports: {}
         };
+        var exports = module.exports;
         var a = _path;
         export default module.exports;
       `);
@@ -39,6 +40,7 @@ describe('Transform CommonJS', function() {
         var module = {
           exports: {}
         };
+        var exports = module.exports;
         var a = _path;
         export default module.exports;
       `);
@@ -56,6 +58,7 @@ describe('Transform CommonJS', function() {
         var module = {
           exports: {}
         };
+        var exports = module.exports;
         var a = wrapped(_path);
         export default module.exports;
       `);
@@ -73,6 +76,7 @@ describe('Transform CommonJS', function() {
         var module = {
           exports: {}
         };
+        var exports = module.exports;
 
         (a => {
           console.log(a);
@@ -95,6 +99,7 @@ describe('Transform CommonJS', function() {
         var module = {
           exports: {}
         };
+        var exports = module.exports;
         var ArrayObservable_1 = _ArrayObservable;
         exports.of = ArrayObservable_1.ArrayObservable.of;
         export const of = ArrayObservable_1.ArrayObservable.of;
@@ -116,6 +121,7 @@ describe('Transform CommonJS', function() {
         var module = {
           exports: {}
         };
+        var exports = module.exports;
         var a = _path;
         export default module.exports;
       `);
@@ -135,6 +141,7 @@ describe('Transform CommonJS', function() {
         var module = {
           exports: {}
         };
+        var exports = module.exports;
 
         if (true) {
           var a = _path;
@@ -155,6 +162,7 @@ describe('Transform CommonJS', function() {
         var module = {
           exports: {}
         };
+        var exports = module.exports;
         import('pat' + 'h');
         export default module.exports;
       `);
@@ -172,6 +180,7 @@ describe('Transform CommonJS', function() {
         var module = {
           exports: {}
         };
+        var exports = module.exports;
         export default module.exports;
       `);
     });
@@ -188,6 +197,7 @@ describe('Transform CommonJS', function() {
         var module = {
           exports: {}
         };
+        var exports = module.exports;
         export default module.exports;
       `);
     });
@@ -204,6 +214,7 @@ describe('Transform CommonJS', function() {
         var module = {
           exports: {}
         };
+        var exports = module.exports;
 
         const data = _interopRequireDefault(_a);
 
@@ -224,6 +235,7 @@ describe('Transform CommonJS', function() {
         var module = {
           exports: {}
         };
+        var exports = module.exports;
         module.exports = 'a';
         export default module.exports;
       `);
@@ -242,6 +254,7 @@ describe('Transform CommonJS', function() {
         var module = {
           exports: {}
         };
+        var exports = module.exports;
 
         if (true) {
           module.exports = 'a';
@@ -265,6 +278,7 @@ describe('Transform CommonJS', function() {
         var module = {
           exports: {}
         };
+        var exports = module.exports;
         exports.a = _a;
         export const a = _a;
         export default module.exports;
@@ -284,6 +298,7 @@ describe('Transform CommonJS', function() {
         var module = {
           exports: {}
         };
+        var exports = module.exports;
         {
           exports.a = true;
         }
@@ -305,9 +320,29 @@ describe('Transform CommonJS', function() {
         var module = {
           exports: {}
         };
+        var exports = module.exports;
         exports.readFileSync = _readFileSync;
         export const readFileSync = _readFileSync;
         console.log(module.exports.readFileSync);
+        export default module.exports;
+      `);
+    });
+
+    it('can support assign', async () => {
+      const input = `
+        Object.defineProperty(exports, "__esModule", { value: true });
+      `;
+
+      const { code } = await transformAsync(input, { ...defaults });
+
+      equal(code, format`
+        var module = {
+          exports: {}
+        };
+        var exports = module.exports;
+        Object.defineProperty(exports, "__esModule", {
+          value: true
+        });
         export default module.exports;
       `);
     });
@@ -326,6 +361,7 @@ describe('Transform CommonJS', function() {
         var module = {
           exports: {}
         };
+        var exports = module.exports;
         exports.a = _path;
         export default module.exports;
       `);
@@ -343,6 +379,7 @@ describe('Transform CommonJS', function() {
         var module = {
           exports: {}
         };
+        var exports = module.exports;
         module.exports = _path;
         export default module.exports;
       `);
@@ -361,6 +398,7 @@ describe('Transform CommonJS', function() {
         var module = {
           exports: {}
         };
+        var exports = module.exports;
         var _a = _path;
         exports.a = _a;
         export const a = _a;
@@ -381,6 +419,7 @@ describe('Transform CommonJS', function() {
         var module = {
           exports: {}
         };
+        var exports = module.exports;
         exports.readFileSync = _readFileSync;
         export const readFileSync = _readFileSync;
         export default module.exports;
@@ -401,6 +440,7 @@ describe('Transform CommonJS', function() {
         var module = {
           exports: {}
         };
+        var exports = module.exports;
         {
           module.exports = _path;
         }
@@ -422,6 +462,7 @@ describe('Transform CommonJS', function() {
         var module = {
           exports: {}
         };
+        var exports = module.exports;
         {
           exports.a = _path;
         }

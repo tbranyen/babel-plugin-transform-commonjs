@@ -35,7 +35,18 @@ export default declare((api, options) => {
             )
           );
 
+          const exportsAlias = t.variableDeclaration('var', [
+            t.variableDeclarator(
+              t.identifier('exports'),
+              t.memberExpression(
+                t.identifier('module'),
+                t.identifier('exports'),
+              )
+            )
+          ]);
+
           const programPath = path.scope.getProgramParent().path;
+          programPath.unshiftContainer('body', exportsAlias);
           programPath.unshiftContainer('body', moduleExports);
           programPath.pushContainer('body', defaultExport);
         }
@@ -185,6 +196,31 @@ export default declare((api, options) => {
           }
           // Otherwise, register the final identifier.
           else {
+            path.scope.getProgramParent().registerBinding(name, path);
+          }
+        }
+      },
+
+      ExportNamedDeclaration: {
+        enter(path) {
+          const { name } = path.node.declaration.declarations[0].init;
+
+          // If state import was renamed, ensure the source reflects it.
+          if (name && state.renamed.has(name)) {
+            const oldName = t.identifier(name);
+            const newName = t.identifier(state.renamed.get(name));
+
+            const decl =  t.exportNamedDeclaration(
+              t.variableDeclaration('const', [
+                t.variableDeclarator(newName, oldName)
+              ]),
+              [],
+            );
+
+            path.replaceWith(decl);
+          }
+          // Otherwise, register the final identifier.
+          else if (name) {
             path.scope.getProgramParent().registerBinding(name, path);
           }
         }
