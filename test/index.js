@@ -74,7 +74,7 @@ describe('Transform CommonJS', function() {
       equal(bindings.l, undefined, 'l is not in the global scope');
     });
 
-    it.skip('can support early return', async () => {
+    it('can support early return', async () => {
       const input = `
         const { isMaster } = require('cluster');
 
@@ -98,6 +98,16 @@ describe('Transform CommonJS', function() {
           exports: {}
         };
         var exports = module.exports;
+
+        (() => {
+          if (isMaster) {
+            return;
+          }
+
+          console.log('Is Worker');
+        })();
+
+        export default module.exports;
       `);
     });
   });

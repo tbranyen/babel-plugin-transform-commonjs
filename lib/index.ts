@@ -16,6 +16,8 @@ export default declare((api, options) => {
     visitor: {
       Program: {
         enter(path) {
+          if (path.node.__replaced) { return; }
+
           const exportsAlias = t.variableDeclaration('var', [
             t.variableDeclarator(
               t.identifier('exports'),
@@ -26,7 +28,7 @@ export default declare((api, options) => {
             )
           ]);
 
-          const moduleExports = t.variableDeclaration('var', [
+          const moduleExportsAlias = t.variableDeclaration('var', [
             t.variableDeclarator(
               t.identifier('module'),
               t.objectExpression([
@@ -38,15 +40,19 @@ export default declare((api, options) => {
             )
           ]);
 
+          exportsAlias.__replaced = true;
+          moduleExportsAlias.__replaced = true;
+
           const programPath = path.scope.getProgramParent().path;
+
           programPath.unshiftContainer('body', exportsAlias);
-          programPath.unshiftContainer('body', moduleExports);
+          programPath.unshiftContainer('body', moduleExportsAlias);
         },
 
         exit(path) {
-          if (path.node.replaced) {
-            return;
-          }
+          if (path.node.__replaced) { return; }
+
+          const programPath = path.scope.getProgramParent().path;
 
           const defaultExport = t.exportDefaultDeclaration(
             t.memberExpression(
@@ -55,9 +61,9 @@ export default declare((api, options) => {
             )
           );
 
-          const programPath = path.scope.getProgramParent().path;
+          path.node.__replaced = true;
+
           programPath.pushContainer('body', defaultExport);
-          path.node.replaced = true;
         }
       },
 
@@ -80,9 +86,11 @@ export default declare((api, options) => {
             const nodes = [];
             const inner = [];
 
-            // Break up the program.
+            // Break up the program, separate Nodes added by us from the nodes
+            // created by the user.
             cursor.scope.path.node.body.filter(node => {
-              if (t.isImportDeclaration(node)) {
+              // Keep replaced nodes together, these will not be wrapped.
+              if (node.__replaced) {
                 nodes.push(node);
               }
               else {
@@ -133,12 +141,13 @@ export default declare((api, options) => {
             }
             else {
               const str = <t.StringLiteral>node.arguments[0];
-
-              path.replaceWith(
-                t.expressionStatement(
-                  t.callExpression(t.import(), [str])
-                )
+              const newNode = t.expressionStatement(
+                t.callExpression(t.import(), [str])
               );
+
+              newNode.__replaced = true;
+
+              path.replaceWith(newNode);
 
               return;
             }
@@ -160,6 +169,8 @@ export default declare((api, options) => {
                 specifiers,
                 t.stringLiteral(str.value),
               );
+
+              decl.__replaced = true;
 
               path.scope.getProgramParent().path.unshiftContainer('body', decl);
               path.parentPath.remove();
@@ -187,6 +198,8 @@ export default declare((api, options) => {
                 t.stringLiteral(str.value),
               );
 
+              decl.__replaced = true;
+
               // Push the declaration in the root scope.
               path.scope.getProgramParent().path.unshiftContainer('body', decl);
 
@@ -195,15 +208,17 @@ export default declare((api, options) => {
               // If we needed to generate or the change the id, then make an
               // assignment so the values stay in sync.
               if (oldId && !t.isNodesEquivalent(oldId, id)) {
-                path.parentPath.parentPath.replaceWith(
-                  t.expressionStatement(
-                    t.assignmentExpression(
-                      '=',
-                      oldId,
-                      id,
-                    )
+                const newNode = t.expressionStatement(
+                  t.assignmentExpression(
+                    '=',
+                    oldId,
+                    id,
                   )
                 );
+
+                newNode.__replaced = true;
+
+                path.parentPath.parentPath.replaceWith(newNode);
               }
               // If we generated a new identifier for state, replace the inline
               // call with the variable.
