@@ -16,6 +16,16 @@ export default declare((api, options) => {
     visitor: {
       Program: {
         enter(path) {
+          const exportsAlias = t.variableDeclaration('var', [
+            t.variableDeclarator(
+              t.identifier('exports'),
+              t.memberExpression(
+                t.identifier('module'),
+                t.identifier('exports'),
+              )
+            )
+          ]);
+
           const moduleExports = t.variableDeclaration('var', [
             t.variableDeclarator(
               t.identifier('module'),
@@ -28,6 +38,16 @@ export default declare((api, options) => {
             )
           ]);
 
+          const programPath = path.scope.getProgramParent().path;
+          programPath.unshiftContainer('body', exportsAlias);
+          programPath.unshiftContainer('body', moduleExports);
+        },
+
+        exit(path) {
+          if (path.node.replaced) {
+            return;
+          }
+
           const defaultExport = t.exportDefaultDeclaration(
             t.memberExpression(
               t.identifier('module'),
@@ -35,33 +55,55 @@ export default declare((api, options) => {
             )
           );
 
-          const exportsAlias = t.variableDeclaration('var', [
-            t.variableDeclarator(
-              t.identifier('exports'),
-              t.memberExpression(
-                t.identifier('module'),
-                t.identifier('exports'),
-              )
-            )
-          ]);
-
           const programPath = path.scope.getProgramParent().path;
-          programPath.unshiftContainer('body', exportsAlias);
-          programPath.unshiftContainer('body', moduleExports);
           programPath.pushContainer('body', defaultExport);
+          path.node.replaced = true;
         }
       },
 
-      VariableDeclarator: {
+      ReturnStatement: {
         enter(path) {
-          const programPath = path.scope.getProgramParent().path;
-          const { name } = path.node.id;
+          let cursor = path;
 
-          if (name && !programPath.scope.hasBinding(name)) {
-            programPath.scope.registerBinding(name, path);
-          }
-          else if (programPath.scope.getBinding(name)) {
-            programPath.scope.getBinding(name).reference(path);
+          do {
+            // Ignore block statements.
+            if (t.isBlockStatement(cursor.scope.path)) {
+              continue;
+            }
+
+            if (t.isFunction(cursor.scope.path) || t.isProgram(cursor.scope.path)) {
+              break;
+            }
+          } while (cursor = cursor.scope.path.parentPath);
+
+          if (t.isProgram(cursor.scope.path)) {
+            const nodes = [];
+            const inner = [];
+
+            // Break up the program.
+            cursor.scope.path.node.body.filter(node => {
+              if (t.isImportDeclaration(node)) {
+                nodes.push(node);
+              }
+              else {
+                inner.push(node);
+              }
+            });
+
+            const program = t.program([
+              ...nodes,
+              t.expressionStatement(
+                t.callExpression(
+                  t.arrowFunctionExpression(
+                    [],
+                    t.blockStatement(inner),
+                  ),
+                  [],
+                )
+              ),
+            ]);
+
+            cursor.scope.path.replaceWith(program);
           }
         }
       },
@@ -92,7 +134,7 @@ export default declare((api, options) => {
             else {
               const str = <t.StringLiteral>node.arguments[0];
 
-              path.parentPath.parentPath.replaceWith(
+              path.replaceWith(
                 t.expressionStatement(
                   t.callExpression(t.import(), [str])
                 )
@@ -179,7 +221,10 @@ export default declare((api, options) => {
 
       ImportDefaultSpecifier: {
         enter(path) {
-          path.scope.getProgramParent().registerBinding(path.node.local.name, path);
+          path.scope.getProgramParent().registerBinding(
+            path.node.local.name,
+            path,
+          );
         }
       },
 
@@ -203,14 +248,15 @@ export default declare((api, options) => {
 
       ExportNamedDeclaration: {
         enter(path) {
-          const { name } = path.node.declaration.declarations[0].init;
+          const nested = path.node.declaration.declarations[0];
+          const name = nested.property ? nested.property.name : nested.name;
 
           // If state import was renamed, ensure the source reflects it.
           if (name && state.renamed.has(name)) {
             const oldName = t.identifier(name);
             const newName = t.identifier(state.renamed.get(name));
 
-            const decl =  t.exportNamedDeclaration(
+            const decl = t.exportNamedDeclaration(
               t.variableDeclaration('const', [
                 t.variableDeclarator(newName, oldName)
               ]),
@@ -228,49 +274,62 @@ export default declare((api, options) => {
 
       AssignmentExpression: {
         enter(path) {
+          if (path.node.__ignore) {
+            return;
+          }
+
+          path.node.__ignore = true;
+
           // Check for module.exports.
           if (t.isMemberExpression(path.node.left)) {
-            if (t.isIdentifier(path.node.left.object)) {
+            if (
+              t.isIdentifier(path.node.left.object) && (
+                path.node.left.object.name === 'module'
+              )
+            ) {
               // Looking at a re-exports, handled above.
               if (t.isCallExpression(path.node.right)) {
                 return;
               }
+            }
+            // Check for regular exports
+            else if (path.node.left.object.name === 'exports') {
+              let prop = path.node.right;
 
-              if (path.node.left.object.name === 'exports') {
-                let prop = path.node.right;
-
-                if (
+              if (
+                (
                   path.scope.getProgramParent().hasBinding(prop.name) ||
                   state.globals.has(prop.name)
-                ) {
-                  prop = path.scope.generateUidIdentifier(prop.name);
-                  state.globals.add(prop.name);
-                }
+                // Don't rename `undefined`.
+                ) && prop.name !== 'undefined'
+              ) {
+                prop = path.scope.generateUidIdentifier(prop.name);
 
-                const decl =  t.exportNamedDeclaration(
-                  t.variableDeclaration('const', [
-                    t.variableDeclarator(path.node.left.property, prop)
-                  ]),
-                  [],
-                );
+                state.renamed.set(path.node.right.name, prop.name);
+                path.scope.rename(path.node.right.name, prop.name);
 
-                // If we're in the root scope then replace the node. Otherwise
-                // we cannot guarentee a named export.
-                if (path.scope.path.isProgram()) {
-                  state.renamed.set(path.node.right.name, prop.name);
-                  path.scope.rename(path.node.right.name, prop.name);
-
-                  // Ensure that the original `exports.` assignment is
-                  // preserved.
-                  path.parentPath.insertAfter(decl);
-
-                  // Ensure that the right hand side gets replaced properly
-                  // for the original code.
-                  if (prop.name) {
-                    path.get('right').replaceWith(t.identifier(prop.name));;
-                  }
-                }
+                // Add this new identifier into the globals and replace the
+                // right hand side with this replacement.
+                state.globals.add(prop.name);
+                path.get('right').replaceWith(prop);
               }
+
+              const decl = t.exportNamedDeclaration(
+                t.variableDeclaration('const', [
+                  t.variableDeclarator(
+                    path.node.left.property,
+                    t.memberExpression(
+                      t.identifier('exports'),
+                      path.node.left.property
+                    )
+                  )
+                ]),
+                [],
+              );
+
+              // If this is a multiple re-assignment, then replace the value
+              // with the
+              path.scope.getProgramParent().path.pushContainer('body', decl);
             }
           }
         }
