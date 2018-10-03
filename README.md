@@ -1,5 +1,7 @@
 # Babel Transform: CommonJS to ES modules
 
+[![Build Status](https://travis-ci.org/tbranyen/babel-plugin-transform-commonjs.svg?branch=master)](https://travis-ci.org/tbranyen/babel-plugin-transform-commonjs)
+
 A Babel 7 compatible transform to convert CommonJS modules into the ES module
 specification. This was created specifically for a bundler, but has many uses
 outside of that context. Specifically for upgrading existing packages to ESM.
