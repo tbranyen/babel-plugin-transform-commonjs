@@ -4,7 +4,10 @@
 
 A Babel 7 compatible transform to convert CommonJS modules into the ES module
 specification. This was created specifically for a bundler, but has many uses
-outside of that context. Specifically for upgrading existing packages to ESM.
+outside of that context. All major browsers have shipped support for ESM and
+Node currently has experimental support from behind a flag. The movement is
+inevitable. Babel offers us a bridge to bring the old to the new. This module
+can reconcile differences as best as possible without hacks.
 
 What to expect:
 

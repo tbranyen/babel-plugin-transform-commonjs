@@ -98,15 +98,37 @@ describe('Transform CommonJS', function() {
           exports: {}
         };
         var exports = module.exports;
-
-        (() => {
+        (function () {
           if (isMaster) {
             return;
           }
 
           console.log('Is Worker');
-        })();
+        }).call(module.exports);
+        export default module.exports;
+      `);
+    });
 
+    it('can support exporting via `this`', async () => {
+      const input = `
+        this.export = 'true';
+      `;
+
+      const { code } = await transformAsync(input, {
+        ...defaults,
+        parserOpts: {
+          allowReturnOutsideFunction: true,
+        },
+      });
+
+      equal(code, format`
+        var module = {
+          exports: {}
+        };
+        var exports = module.exports;
+        (function () {
+          this.export = 'true';
+        }).call(module.exports);
         export default module.exports;
       `);
     });

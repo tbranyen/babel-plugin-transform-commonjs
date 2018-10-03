@@ -5,6 +5,56 @@ export default declare((api, options) => {
   api.assertVersion(7);
 
   const state = { globals: new Set(), renamed: new Map() };
+  const enter = path => {
+    let cursor = path;
+
+    do {
+      // Ignore block statements.
+      if (t.isBlockStatement(cursor.scope.path)) {
+        continue;
+      }
+
+      if (t.isFunction(cursor.scope.path) || t.isProgram(cursor.scope.path)) {
+        break;
+      }
+    } while (cursor = cursor.scope.path.parentPath);
+
+    if (t.isProgram(cursor.scope.path)) {
+      const nodes = [];
+      const inner = [];
+
+      // Break up the program, separate Nodes added by us from the nodes
+      // created by the user.
+      cursor.scope.path.node.body.filter(node => {
+        // Keep replaced nodes together, these will not be wrapped.
+        if (node.__replaced) {
+          nodes.push(node);
+        }
+        else {
+          inner.push(node);
+        }
+      });
+
+      const program = t.program([
+        ...nodes,
+        t.expressionStatement(
+          t.callExpression(
+            t.memberExpression(
+              t.functionExpression(
+                null,
+                [],
+                t.blockStatement(inner),
+              ),
+              t.identifier('call'),
+            ),
+            [t.identifier('module.exports')],
+          )
+        ),
+      ]);
+
+      cursor.scope.path.replaceWith(program);
+    }
+  };
 
   return {
     post() {
@@ -61,59 +111,14 @@ export default declare((api, options) => {
           );
 
           path.node.__replaced = true;
+          defaultExport.__replaced = true;
 
           programPath.pushContainer('body', defaultExport);
         }
       },
 
-      ReturnStatement: {
-        enter(path) {
-          let cursor = path;
-
-          do {
-            // Ignore block statements.
-            if (t.isBlockStatement(cursor.scope.path)) {
-              continue;
-            }
-
-            if (t.isFunction(cursor.scope.path) || t.isProgram(cursor.scope.path)) {
-              break;
-            }
-          } while (cursor = cursor.scope.path.parentPath);
-
-          if (t.isProgram(cursor.scope.path)) {
-            const nodes = [];
-            const inner = [];
-
-            // Break up the program, separate Nodes added by us from the nodes
-            // created by the user.
-            cursor.scope.path.node.body.filter(node => {
-              // Keep replaced nodes together, these will not be wrapped.
-              if (node.__replaced) {
-                nodes.push(node);
-              }
-              else {
-                inner.push(node);
-              }
-            });
-
-            const program = t.program([
-              ...nodes,
-              t.expressionStatement(
-                t.callExpression(
-                  t.arrowFunctionExpression(
-                    [],
-                    t.blockStatement(inner),
-                  ),
-                  [],
-                )
-              ),
-            ]);
-
-            cursor.scope.path.replaceWith(program);
-          }
-        }
-      },
+      ThisExpression: { enter },
+      ReturnStatement: { enter },
 
       CallExpression: {
         enter(path) {
