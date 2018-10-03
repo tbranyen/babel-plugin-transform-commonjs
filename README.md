@@ -9,6 +9,12 @@ Node currently has experimental support from behind a flag. The movement is
 inevitable. Babel offers us a bridge to bring the old to the new. This module
 can reconcile differences as best as possible without hacks.
 
+The goal of this transform is to produce spec-compliant code. Any behavior that
+diverges will throw by default. However, there are escape hatches provided if
+you know what you're doing.
+
+### Notes
+
 What to expect:
 
 - A transform that can transform a majority of CommonJS modules to ES modules
@@ -23,8 +29,11 @@ What not to expect:
 
 Notable differences:
 
-- Non-static requires are turned into incompatible dynamic `import(...)`s
-- Reserved words are valid exports in CJS `exports.null = ...`, but not in ESM
+- Non-static requires are invalid and will raise an exception
+- Nested requires will always be hoisted
+- Reserved words are valid exports in CJS, but not in ESM
+
+### Usage
 
 ```sh
 npm install --save-dev babel-plugin-transform-commonjs
@@ -56,3 +65,9 @@ exports.readFileSync = _readFileSync;
 export const readFileSync = _readFileSync;
 export default module.exports;
 ```
+
+### Options
+
+- `synchronousImport` - Convert non-static require to a dynamic import if the
+  bundler can inline and link synchronously. This will produce invalid code for
+  any other use case, use with caution.

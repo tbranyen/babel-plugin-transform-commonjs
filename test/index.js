@@ -307,12 +307,27 @@ describe('Transform CommonJS', function() {
       `);
     });
 
-    it('does not support interpolated require call', async () => {
+    it('can not support interpolated require call', async () => {
       const input = `
         var a = require('pat' + 'h');
       `;
 
-      const { code } = await transformAsync(input, { ...defaults });
+      await transformAsync(input, { ...defaults }).catch(ex => {
+        equal(ex.toString(), `Error: Invalid require signature: require('pat' + 'h')`);
+      });
+    });
+
+    it('can support interpolated require call with option', async () => {
+      const input = `
+        var a = require('pat' + 'h');
+      `;
+
+      const { code } = await transformAsync(input, {
+        ...defaults,
+        plugins: [[plugin, {
+          synchronousImport: true,
+        }]]
+      });
 
       equal(code, format`
         var module = {
