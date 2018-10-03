@@ -8,7 +8,14 @@
     "watch": "tsc -w",
     "test": "mocha"
   },
-  "keywords": ["babel", "transform", "plugin", "commonjs", "modules", "esm"],
+  "keywords": [
+    "babel",
+    "transform",
+    "plugin",
+    "commonjs",
+    "modules",
+    "esm"
+  ],
   "author": "Tim Branyen (@tbranyen)",
   "license": "MIT",
   "dependencies": {
@@ -16,6 +23,7 @@
   },
   "devDependencies": {
     "mocha": "^5.2.0",
-    "ts-node": "7.0.1"
+    "ts-node": "7.0.1",
+    "typescript": "^3.1.1"
   }
 }
