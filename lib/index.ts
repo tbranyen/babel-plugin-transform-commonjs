@@ -4,7 +4,6 @@ import { template, types as t } from '@babel/core';
 export default declare((api, options) => {
   api.assertVersion(7);
 
-  const {} = options;
   const state = { globals: new Set(), renamed: new Map() };
 
   return {

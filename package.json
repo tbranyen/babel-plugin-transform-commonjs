@@ -1,7 +1,7 @@
 {
   "name": "babel-plugin-transform-commonjs",
   "version": "1.0.0-rc",
-  "description": "A Babel plugin transform to convert CommonJS to ES Modules",
+  "description": "A Babel plugin transform to convert CommonJS to ES modules",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
