@@ -9,6 +9,7 @@ What to expect:
 - A transform that can transform a majority of CommonJS to ES Modules
 - The integrity of `module.exports` intact, no tricks to separate this object
 - Non-static requires are turned into incompatible dynamic `import(...)`s
+- Early returns are wrapped in an arrow function IIFE
 
 What not to expect:
 

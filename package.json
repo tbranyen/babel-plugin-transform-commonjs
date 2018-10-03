@@ -1,14 +1,14 @@
 {
   "name": "babel-plugin-transform-commonjs",
-  "version": "1.0.0-beta.3",
-  "description": "A Babel plugin transform to convert CommonJS to ESM",
+  "version": "1.0.0-rc",
+  "description": "A Babel plugin transform to convert CommonJS to ES Modules",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
     "watch": "tsc -w",
     "test": "mocha"
   },
-  "keywords": [],
+  "keywords": ["babel", "transform", "plugin", "commonjs", "modules", "esm"],
   "author": "Tim Branyen (@tbranyen)",
   "license": "MIT",
   "dependencies": {
