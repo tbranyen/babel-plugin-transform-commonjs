@@ -143,7 +143,7 @@ export default declare((api, options) => {
                 value: (<t.TemplateLiteral>node.arguments[0]).quasis[0].value.raw,
               };
             }
-            else {
+            else if (options.synchronousImport) {
               const str = <t.StringLiteral>node.arguments[0];
               const newNode = t.expressionStatement(
                 t.callExpression(t.import(), [str])
@@ -154,6 +154,9 @@ export default declare((api, options) => {
               path.replaceWith(newNode);
 
               return;
+            }
+            else {
+              throw new Error(`Invalid require signature: ${path.toString()}`);
             }
 
             const specifiers = [];
