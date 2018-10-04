@@ -83,7 +83,7 @@ export default module.exports;
   ```json
   {
     "plugins": [
-      ["transform-commonjs", { synchronousImport: true }]
+      ["transform-commonjs", { "synchronousImport": true }]
     ]
   }
   ```
