@@ -1,23 +1,25 @@
-# Babel Transform: CommonJS to ES modules
+# Babel Transform: Node CommonJS to ES modules
 
 [![Build Status](https://travis-ci.org/tbranyen/babel-plugin-transform-commonjs.svg?branch=master)](https://travis-ci.org/tbranyen/babel-plugin-transform-commonjs)
 
-A Babel 7 compatible transform to convert CommonJS modules into the ES module
-specification. This was created specifically for a bundler, but has many uses
-outside of that context. All major browsers have shipped support for ESM and
-Node currently has experimental support from behind a flag. The movement is
-inevitable. Babel offers us a bridge to bring the old to the new. This module
-can reconcile differences as best as possible without hacks.
+A Babel 7 compatible transform to convert Node-style CommonJS modules into the
+ES module specification. This was created specifically for an experimental
+module bundler, but has many uses outside of that initial use case. All major
+browsers have shipped support for ESM and Node currently has experimental
+support behind a flag. Babel offers a bridge to bring the old to the new, which
+is humorous given the origins of Babel which brought the new to the old. This
+module can reconcile differences as best as possible without resorting to
+hacks.
 
 The goal of this transform is to produce spec-compliant code. Any behavior that
-diverges will throw by default. However, there are escape hatches provided if
-you know what you're doing.
+diverges will throw by default. There are escape hatches however, if
+you know what they do.
 
 ### Notes
 
 What to expect:
 
-- A transform that can transform a majority of CommonJS modules to ES modules
+- A transform that can transform a majority of Node CommonJS modules to ES modules
 - The integrity of `module.exports` intact, no tricks to separate this object
 - Early returns are wrapped in an arrow function IIFE
 
@@ -27,11 +29,16 @@ What not to expect:
 - Hoisting tricks, excessive code rewriting
 - Browser support for core Node modules
 
-Notable differences:
+Notable features not supported:
 
 - Non-static requires are invalid and will raise an exception
-- Nested requires will always be hoisted
-- Reserved words are valid exports in CJS, but not in ESM
+- Nested requires will always be hoisted, unless they are non-static, see above
+- Reserved words are valid exports in CJS due to being property names, but invalid in ESM
+
+Notable features supported:
+
+- Early return
+- Setting export values on `this`
 
 ### Usage
 
@@ -43,7 +50,7 @@ Update your babel configuration:
 
 ```json
 {
-  "plugins": "transform-commonjs"
+  "plugins": ["transform-commonjs"]
 }
 ```
 
@@ -68,6 +75,15 @@ export default module.exports;
 
 ### Options
 
-- `synchronousImport` - Convert non-static require to a dynamic import if the
-  bundler can inline and link synchronously. This will produce invalid code for
-  any other use case, use with caution.
+- `synchronousImport` - Convert non-static require to a compatible dynamic
+  import. If the bundler can inline and link synchronously, this should be
+  okay, although this will produce invalid code for any other case. Use with
+  caution!
+
+  ```json
+  {
+    "plugins": [
+      ["transform-commonjs", { synchronousImport: true }]
+    ]
+  }
+  ```

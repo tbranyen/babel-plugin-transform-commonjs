@@ -276,7 +276,7 @@ describe('Transform CommonJS', function() {
       `);
     });
 
-    it('supports dynamic import inside a try/catch', async () => {
+    it('can not support non-static import inside a try/catch by default', async () => {
       const input = `
         function test() {
           try {
@@ -287,7 +287,28 @@ describe('Transform CommonJS', function() {
         }
       `;
 
-      const { code } = await transformAsync(input, { ...defaults });
+      await transformAsync(input, { ...defaults }).catch(ex => {
+        equal(ex.toString(), `Error: Invalid require signature: require(name)`);
+      });
+    });
+
+    it('can support non-static import inside a try/catch, with option', async () => {
+      const input = `
+        function test() {
+          try {
+            return require(name);
+          } finally {
+            LOADING_MODULES.delete(name);
+          }
+        }
+      `;
+
+      const { code } = await transformAsync(input, {
+        ...defaults,
+        plugins: [[plugin,  {
+          synchronousImport: true,
+        }]],
+      });
 
       equal(code, format`
         var module = {
