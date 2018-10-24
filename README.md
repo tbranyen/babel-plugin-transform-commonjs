@@ -33,7 +33,7 @@ Notable features not supported:
 
 - Non-static requires are invalid and will raise an exception
 - Nested requires will always be hoisted, unless they are non-static, see above
-- Reserved words are valid exports in CJS due to being property names, but invalid in ESM
+- Invalid named exports (`exports["I'mateapot"]`) will only be available on the default export
 
 Notable features supported:
 

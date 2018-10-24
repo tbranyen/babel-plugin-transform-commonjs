@@ -109,6 +109,29 @@ describe('Transform CommonJS', function() {
       `);
     });
 
+    it('can ignore invalid named exports, keeping them on default', async () => {
+      const input = `
+        exports["I'mateapot"] = {
+          a: true,
+        };
+      `;
+
+      const { code } = await transformAsync(input, {
+        ...defaults,
+      });
+
+      equal(code, format`
+        var module = {
+          exports: {}
+        };
+        var exports = module.exports;
+        exports["I'mateapot"] = {
+          a: true
+        };
+        export default module.exports;
+      `);
+    });
+
     it('can support exporting via `this`', async () => {
       const input = `
         this.export = 'true';
@@ -129,6 +152,123 @@ describe('Transform CommonJS', function() {
         (function () {
           this.export = 'true';
         }).call(module.exports);
+        export default module.exports;
+      `);
+    });
+  });
+
+  describe('Bindings', () => {
+    it('can support binding module and exports to the program', async () => {
+      const input = `
+        console.log('here');
+      `;
+
+      const { code, ast } = await transformAsync(input, {
+        ...defaults,
+        ast: true,
+      });
+
+      let bindings = null;
+
+      traverseAst(ast, {
+        Program(path) {
+          bindings = path.scope.getAllBindings();
+        }
+      });
+
+      equal(bindings.module.referenced, true);
+      equal(bindings.exports.referenced, false);
+
+      equal(code, format`
+        var module = {
+          exports: {}
+        };
+        var exports = module.exports;
+        console.log('here');
+        export default module.exports;
+      `);
+    });
+
+    it('can support binding new identifiers created when hoisting', async () => {
+      const input = `
+        let traverse;
+        if (true) {
+          traverse = require('fs');
+        }
+      `;
+
+      const { code, ast } = await transformAsync(input, {
+        ...defaults,
+        ast: true,
+      });
+
+      let bindings = null;
+
+      traverseAst(ast, {
+        Program(path) {
+          bindings = path.scope.getAllBindings();
+        }
+      });
+
+      equal(bindings.traverse.referenced, false);
+      equal(bindings._fs.referenced, false);
+
+      equal(code, format`
+        import _fs from "fs";
+        var module = {
+          exports: {}
+        };
+        var exports = module.exports;
+        let traverse;
+
+        if (true) {
+          traverse = _fs;
+        }
+
+        export default module.exports;
+      `);
+    });
+
+    it('can support binding new identifiers created when hoisting', async () => {
+      const input = `
+        if (process.env.NODE_ENV === 'production') {
+          module.exports = require('./dist/production');
+        }
+        else {
+          module.exports = require('./dist/development');
+        }
+      `;
+
+      const { code, ast } = await transformAsync(input, {
+        ...defaults,
+        ast: true,
+      });
+
+      let bindings = null;
+
+      traverseAst(ast, {
+        Program(path) {
+          bindings = path.scope.getAllBindings();
+        }
+      });
+
+      equal(bindings._distDevelopment.referenced, false);
+      equal(bindings._distProduction.referenced, false);
+
+      equal(code, format`
+        import _distDevelopment from "./dist/development";
+        import _distProduction from "./dist/production";
+        var module = {
+          exports: {}
+        };
+        var exports = module.exports;
+
+        if (process.env.NODE_ENV === 'production') {
+          module.exports = _distProduction;
+        } else {
+          module.exports = _distDevelopment;
+        }
+
         export default module.exports;
       `);
     });
@@ -683,6 +823,5 @@ describe('Transform CommonJS', function() {
         export default module.exports;
       `);
     });
-
   });
 });

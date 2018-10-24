@@ -94,8 +94,19 @@ export default declare((api, options) => {
 
           const programPath = path.scope.getProgramParent().path;
 
+          // Add the `module` and `exports` globals into the program body.
           programPath.unshiftContainer('body', exportsAlias);
           programPath.unshiftContainer('body', moduleExportsAlias);
+
+          const modulePath = programPath.get('body.0');
+          const exportsPath = programPath.get('body.1');
+
+          // Ensure these are registered in the program scope.
+          path.scope.registerBinding('module', modulePath);
+          path.scope.registerBinding('exports', exportsPath);
+
+          // Ensure module gets referenced by the exports declaration.
+          path.scope.getBinding('module').reference(exportsPath);
         },
 
         exit(path) {
@@ -192,7 +203,7 @@ export default declare((api, options) => {
               let id = oldId;
 
               // If we can't find an id, generate one from the import path.
-              if (!oldId) {
+              if (!oldId || !t.isProgram(parentPath.scope.path.type)) {
                 id = path.scope.generateUidIdentifier(str.value);
               }
 
@@ -336,22 +347,27 @@ export default declare((api, options) => {
                 path.get('right').replaceWith(prop);
               }
 
-              const decl = t.exportNamedDeclaration(
-                t.variableDeclaration('const', [
-                  t.variableDeclarator(
-                    path.node.left.property,
-                    t.memberExpression(
-                      t.identifier('exports'),
-                      path.node.left.property
+              try {
+                const decl = t.exportNamedDeclaration(
+                  t.variableDeclaration('const', [
+                    t.variableDeclarator(
+                      path.node.left.property,
+                      t.memberExpression(
+                        t.identifier('exports'),
+                        path.node.left.property
+                      )
                     )
-                  )
-                ]),
-                [],
-              );
+                  ]),
+                  [],
+                );
 
-              // If this is a multiple re-assignment, then replace the value
-              // with the
-              path.scope.getProgramParent().path.pushContainer('body', decl);
+                // If this is a multiple re-assignment, then replace the value
+                // with the
+                path.scope.getProgramParent().path.pushContainer('body', decl);
+              }
+              catch (ex) {
+
+              }
             }
           }
         }
