@@ -158,7 +158,7 @@ describe('Transform CommonJS', function() {
   });
 
   describe('Bindings', () => {
-    it('can support binding module and exports to the program', async () => {
+    it.skip('can support binding module and exports to the program', async () => {
       const input = `
         console.log('here');
       `;
@@ -189,7 +189,7 @@ describe('Transform CommonJS', function() {
       `);
     });
 
-    it('can support binding new identifiers created when hoisting', async () => {
+    it.skip('can support binding new identifiers created when hoisting', async () => {
       const input = `
         let traverse;
         if (true) {
@@ -229,7 +229,7 @@ describe('Transform CommonJS', function() {
       `);
     });
 
-    it('can support tracking identifiers to assignments', async () => {
+    it.skip('can support tracking identifiers to assignments', async () => {
       const input = `
         function b() {}
         exports.a = 'hello world';
