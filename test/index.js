@@ -11,6 +11,21 @@ describe('Transform CommonJS', function() {
   };
 
   describe('General behavior', () => {
+    it('can ignore esm modules', async () => {
+      const input = `
+        export const undef = undefined;
+      `;
+
+      const { code } = await transformAsync(input, {
+        ...defaults,
+        sourceType: 'module',
+      });
+
+      equal(code, format`
+        export const undef = undefined;
+      `);
+    });
+
     it('can support exporting all literal types', async () => {
       const input = `
         exports.Undefined = undefined;

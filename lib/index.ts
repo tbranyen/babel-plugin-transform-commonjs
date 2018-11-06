@@ -8,6 +8,7 @@ export default declare((api, options) => {
     globals: new Set(),
     renamed: new Map(),
     identifiers: new Map(),
+    isCJS: false,
   };
 
   const enter = path => {
@@ -71,8 +72,8 @@ export default declare((api, options) => {
 
     visitor: {
       Program: {
-        enter(path) {
-          if (path.node.__replaced) { return; }
+        exit(path) {
+          if (path.node.__replaced || !state.isCJS) { return; }
 
           const exportsAlias = t.variableDeclaration('var', [
             t.variableDeclarator(
@@ -101,15 +102,21 @@ export default declare((api, options) => {
 
           const programPath = path.scope.getProgramParent().path;
 
-          // Add the `module` and `exports` globals into the program body.
-          programPath.unshiftContainer('body', exportsAlias);
-          programPath.unshiftContainer('body', moduleExportsAlias);
-        },
+          // Add the `module` and `exports` globals into the program body,
+          // after the last `import` declaration.
+          const lastImport = programPath
+            .get('body')
+            .filter(p => p.isImportDeclaration())
+            .pop();
 
-        exit(path) {
-          if (path.node.__replaced) { return; }
-
-          const programPath = path.scope.getProgramParent().path;
+          if (lastImport) {
+            lastImport.insertAfter(exportsAlias);
+            lastImport.insertAfter(moduleExportsAlias);
+          }
+          else {
+            programPath.unshiftContainer('body', exportsAlias);
+            programPath.unshiftContainer('body', moduleExportsAlias);
+          }
 
           const defaultExport = t.exportDefaultDeclaration(
             t.memberExpression(
@@ -141,6 +148,10 @@ export default declare((api, options) => {
           // Look for `require()` any renaming is assumed to be intentionally
           // done to break state kind of check, so we won't look for aliases.
           if (t.isIdentifier(node.callee) && node.callee.name === 'require') {
+            // Require must be global for us to consider this a CommonJS
+            // module.
+            state.isCJS = true;
+
             // Check for nested string and template literals.
             const isString = t.isStringLiteral(node.arguments[0]);
             const isLiteral = t.isTemplateLiteral(node.arguments[0]);
@@ -284,6 +295,8 @@ export default declare((api, options) => {
                 path.node.left.object.name === 'module'
               )
             ) {
+              state.isCJS = true;
+
               // Looking at a re-exports, handled above.
               if (t.isCallExpression(path.node.right)) {
                 return;
@@ -291,6 +304,8 @@ export default declare((api, options) => {
             }
             // Check for regular exports
             else if (path.node.left.object.name === 'exports') {
+              state.isCJS = true;
+
               let prop = path.node.right;
 
               if (
@@ -300,6 +315,7 @@ export default declare((api, options) => {
                 // Don't rename `undefined`.
                 ) && prop.name !== 'undefined'
               ) {
+
                 prop = path.scope.generateUidIdentifier(prop.name);
 
                 const oldName = path.node.right.name;
