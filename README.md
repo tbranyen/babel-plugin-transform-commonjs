@@ -15,6 +15,9 @@ The goal of this transform is to produce spec-compliant code. Any behavior that
 diverges will throw by default. There are escape hatches however, if
 you know what they do.
 
+This module will ignore ESM by default, so long as they do not reference:
+`require`, `module.exports`, or `exports`.
+
 ### Notes
 
 What to expect:
