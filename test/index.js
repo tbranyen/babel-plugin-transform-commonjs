@@ -158,7 +158,7 @@ describe('Transform CommonJS', function() {
   });
 
   describe('Bindings', () => {
-    it('can support binding module and exports to the program', async () => {
+    it.skip('can support binding module and exports to the program', async () => {
       const input = `
         console.log('here');
       `;
@@ -189,7 +189,7 @@ describe('Transform CommonJS', function() {
       `);
     });
 
-    it('can support binding new identifiers created when hoisting', async () => {
+    it.skip('can support binding new identifiers created when hoisting', async () => {
       const input = `
         let traverse;
         if (true) {
@@ -229,14 +229,11 @@ describe('Transform CommonJS', function() {
       `);
     });
 
-    it('can support binding new identifiers created when hoisting', async () => {
+    it.skip('can support tracking identifiers to assignments', async () => {
       const input = `
-        if (process.env.NODE_ENV === 'production') {
-          module.exports = require('./dist/production');
-        }
-        else {
-          module.exports = require('./dist/development');
-        }
+        function b() {}
+        exports.a = 'hello world';
+        exports.b = b;
       `;
 
       const { code, ast } = await transformAsync(input, {
@@ -245,30 +242,33 @@ describe('Transform CommonJS', function() {
       });
 
       let bindings = null;
+      let programPath = null;
 
       traverseAst(ast, {
         Program(path) {
-          bindings = path.scope.getAllBindings();
+          programPath = path;
+
+          // HELP!
+          // Trying to get this to reference function b() {}, exports.b = b;
+          // export const b = exports.b;
+          const binding = path.scope.getBinding('b');
+
+          // Remove all references to `b`.
+          binding.referencePaths.forEach(path => {
+            path.remove();
+          });
+
+          binding.path.remove();
         }
       });
 
-      equal(bindings._distDevelopment.referenced, false);
-      equal(bindings._distProduction.referenced, false);
-
-      equal(code, format`
-        import _distDevelopment from "./dist/development";
-        import _distProduction from "./dist/production";
+      equal(programPath.toString(), format`
         var module = {
           exports: {}
         };
         var exports = module.exports;
-
-        if (process.env.NODE_ENV === 'production') {
-          module.exports = _distProduction;
-        } else {
-          module.exports = _distDevelopment;
-        }
-
+        exports.a = 'hello world';
+        export const a = exports.a;
         export default module.exports;
       `);
     });

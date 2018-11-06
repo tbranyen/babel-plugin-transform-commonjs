@@ -4,10 +4,16 @@ import { template, types as t } from '@babel/core';
 export default declare((api, options) => {
   api.assertVersion(7);
 
-  const state = { globals: new Set(), renamed: new Map() };
+  const state = {
+    globals: new Set(),
+    renamed: new Map(),
+    identifiers: new Map(),
+  };
+
   const enter = path => {
     let cursor = path;
 
+    // Find the closest function scope or parent.
     do {
       // Ignore block statements.
       if (t.isBlockStatement(cursor.scope.path)) {
@@ -60,6 +66,7 @@ export default declare((api, options) => {
     post() {
       state.globals.clear();
       state.renamed.clear();
+      state.identifiers.clear();
     },
 
     visitor: {
@@ -97,16 +104,6 @@ export default declare((api, options) => {
           // Add the `module` and `exports` globals into the program body.
           programPath.unshiftContainer('body', exportsAlias);
           programPath.unshiftContainer('body', moduleExportsAlias);
-
-          const modulePath = programPath.get('body.0');
-          const exportsPath = programPath.get('body.1');
-
-          // Ensure these are registered in the program scope.
-          path.scope.registerBinding('module', modulePath);
-          path.scope.registerBinding('exports', exportsPath);
-
-          // Ensure module gets referenced by the exports declaration.
-          path.scope.getBinding('module').reference(exportsPath);
         },
 
         exit(path) {
@@ -130,6 +127,12 @@ export default declare((api, options) => {
 
       ThisExpression: { enter },
       ReturnStatement: { enter },
+
+      Identifier: {
+        enter(path) {
+          state.identifiers.set(path, path.node.name);
+        }
+      },
 
       CallExpression: {
         enter(path) {
@@ -252,15 +255,6 @@ export default declare((api, options) => {
         }
       },
 
-      ImportDefaultSpecifier: {
-        enter(path) {
-          path.scope.getProgramParent().registerBinding(
-            path.node.local.name,
-            path,
-          );
-        }
-      },
-
       ImportSpecifier: {
         enter(path) {
           const { name } = path.node.local;
@@ -271,36 +265,6 @@ export default declare((api, options) => {
             const newName = t.identifier(state.renamed.get(name));
 
             path.replaceWith(t.importSpecifier(newName, oldName));
-          }
-          // Otherwise, register the final identifier.
-          else {
-            path.scope.getProgramParent().registerBinding(name, path);
-          }
-        }
-      },
-
-      ExportNamedDeclaration: {
-        enter(path) {
-          const nested = path.node.declaration.declarations[0];
-          const name = nested.property ? nested.property.name : nested.name;
-
-          // If state import was renamed, ensure the source reflects it.
-          if (name && state.renamed.has(name)) {
-            const oldName = t.identifier(name);
-            const newName = t.identifier(state.renamed.get(name));
-
-            const decl = t.exportNamedDeclaration(
-              t.variableDeclaration('const', [
-                t.variableDeclarator(newName, oldName)
-              ]),
-              [],
-            );
-
-            path.replaceWith(decl);
-          }
-          // Otherwise, register the final identifier.
-          else if (name) {
-            path.scope.getProgramParent().registerBinding(name, path);
           }
         }
       },
@@ -338,15 +302,17 @@ export default declare((api, options) => {
               ) {
                 prop = path.scope.generateUidIdentifier(prop.name);
 
-                state.renamed.set(path.node.right.name, prop.name);
-                path.scope.rename(path.node.right.name, prop.name);
+                const oldName = path.node.right.name;
+                state.renamed.set(oldName, prop.name);
 
                 // Add this new identifier into the globals and replace the
                 // right hand side with this replacement.
                 state.globals.add(prop.name);
                 path.get('right').replaceWith(prop);
+                path.scope.rename(oldName, prop.name);
               }
 
+              // If we set an invalid name, then abort out.
               try {
                 const decl = t.exportNamedDeclaration(
                   t.variableDeclaration('const', [
@@ -361,13 +327,9 @@ export default declare((api, options) => {
                   [],
                 );
 
-                // If this is a multiple re-assignment, then replace the value
-                // with the
                 path.scope.getProgramParent().path.pushContainer('body', decl);
               }
-              catch (ex) {
-
-              }
+              catch (unhandledException) {}
             }
           }
         }
