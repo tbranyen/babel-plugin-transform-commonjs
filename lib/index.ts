@@ -60,6 +60,7 @@ export default declare((api, options) => {
       ]);
 
       cursor.scope.path.replaceWith(program);
+      state.isCJS = true;
     }
   };
 
@@ -68,6 +69,7 @@ export default declare((api, options) => {
       state.globals.clear();
       state.renamed.clear();
       state.identifiers.clear();
+      state.isCJS = false;
     },
 
     visitor: {
