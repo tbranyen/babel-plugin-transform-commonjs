@@ -4,6 +4,7 @@
   "description": "A Babel plugin transform to convert CommonJS to ES modules",
   "main": "dist/index.js",
   "scripts": {
+    "prepack": "tsc",
     "build": "tsc",
     "watch": "tsc -w",
     "test": "mocha"
@@ -18,6 +19,14 @@
   ],
   "author": "Tim Branyen (@tbranyen)",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tbranyen/babel-plugin-transform-commonjs.git"
+  },
+  "bugs": {
+    "url": "https://github.com/tbranyen/babel-plugin-transform-commonjs/issues"
+  },
+  "homepage": "https://github.com/tbranyen/babel-plugin-transform-commonjs#readme",
   "dependencies": {
     "@babel/helper-plugin-utils": "^7.0.0"
   },
