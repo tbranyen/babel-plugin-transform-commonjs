@@ -99,6 +99,31 @@ describe('Transform CommonJS', function() {
       `);
     });
 
+    it('can support a cjs module that has a binding to module', async () => {
+      const input = `
+        const { module } = global;
+
+        module.exports = true;
+      `;
+
+      const { code } = await transformAsync(input, {
+        ...defaults,
+        sourceType: 'module',
+      });
+
+      equal(code, format`
+        var module = {
+          exports: {}
+        };
+        var exports = module.exports;
+        const {
+          module
+        } = global;
+        module.exports = true;
+        export default module.exports;
+      `);
+    });
+
     it('can support exporting all literal types', async () => {
       const input = `
         exports.Undefined = undefined;
@@ -783,7 +808,7 @@ describe('Transform CommonJS', function() {
       `);
     });
 
-    it.skip('can support assign', async () => {
+    it('can support assign', async () => {
       /* Something needs to set state.isCJS for Object.defineProperty
        * and Object.defineProperties for this test to pass. */
       const input = `

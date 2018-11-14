@@ -203,6 +203,28 @@ export default declare((api, options) => {
             },
           });
 
+          const programPath = path.scope.getProgramParent().path;
+
+          // Even though we are pretty sure this isn't a CommonJS file, lets
+          // do one last sanity check for an `import` or `export` in the
+          // program path.
+          if (!state.isCJS) {
+            const lastImport = programPath
+              .get('body')
+              .filter(p => p.isImportDeclaration())
+              .pop();
+
+            const lastExport = programPath
+              .get('body')
+              .filter(p => p.isExportDeclaration())
+              .pop();
+
+            // Maybe it is a CJS file after-all.
+            if (!lastImport && !lastExport) {
+              state.isCJS = true;
+            }
+          }
+
           if (path.node.__replaced || !state.isCJS) { return; }
 
           const exportsAlias = t.variableDeclaration('var', [
@@ -229,8 +251,6 @@ export default declare((api, options) => {
 
           exportsAlias.__replaced = true;
           moduleExportsAlias.__replaced = true;
-
-          const programPath = path.scope.getProgramParent().path;
 
           // Add the `module` and `exports` globals into the program body,
           // after the last `import` declaration.
