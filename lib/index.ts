@@ -295,20 +295,38 @@ export default declare((api, options) => {
 
           // Check for module.exports.
           if (t.isMemberExpression(path.node.left)) {
-            if (
+            const moduleBinding = path.scope.getBinding('module');
+            const exportsBinding = path.scope.getBinding('exports');
+
+            // Something like `module.exports.namedExport = true;`.
+            if (t.isMemberExpression(path.node.left.object) && (
+              path.node.left.object.object.name === 'module'
+            )) {
+              if (!moduleBinding) {
+                state.isCJS = true;
+                return;
+              }
+            }
+            else if (
               t.isIdentifier(path.node.left.object) && (
                 path.node.left.object.name === 'module'
               )
             ) {
-              state.isCJS = true;
+              if (!moduleBinding) {
+                state.isCJS = true;
 
-              // Looking at a re-exports, handled above.
-              if (t.isCallExpression(path.node.right)) {
-                return;
+                // Looking at a re-exports, handled above.
+                if (t.isCallExpression(path.node.right)) {
+                  return;
+                }
               }
             }
             // Check for regular exports
             else if (path.node.left.object.name === 'exports') {
+              if (exportsBinding) {
+                return;
+              }
+
               state.isCJS = true;
 
               let prop = path.node.right;

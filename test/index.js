@@ -26,7 +26,7 @@ describe('Transform CommonJS', function() {
       `);
     });
 
-    it.skip('can ignore esm modules with module argument', async () => {
+    it('can ignore esm modules with module argument', async () => {
       const input = `
         function fakeModule(module) {
           module.exports = {};
@@ -43,6 +43,7 @@ describe('Transform CommonJS', function() {
 
       equal(code, format`
         function fakeModule(module) {
+          module.exports = {};
           module.exports.fake = 'not real';
         }
 
@@ -50,7 +51,7 @@ describe('Transform CommonJS', function() {
       `);
     });
 
-    it.skip('can ignore esm modules with exports argument', async () => {
+    it('can ignore esm modules with exports argument', async () => {
       const input = `
         function fakeExports(exports) {
           exports = {};
@@ -132,6 +133,40 @@ describe('Transform CommonJS', function() {
         export const Boolean = exports.Boolean;
         export const String = exports.String;
         export const Function = exports.Function;
+        export default module.exports;
+      `);
+    });
+
+    it('can support a simple default export', async () => {
+      const input = `
+        module.exports = "hello world";
+      `;
+
+      const { code } = await transformAsync(input, { ...defaults });
+
+      equal(code, format`
+        var module = {
+          exports: {}
+        };
+        var exports = module.exports;
+        module.exports = "hello world";
+        export default module.exports;
+      `);
+    });
+
+    it('can support a simple named export through module.exports', async () => {
+      const input = `
+        module.exports.test = "hello world";
+      `;
+
+      const { code } = await transformAsync(input, { ...defaults });
+
+      equal(code, format`
+        var module = {
+          exports: {}
+        };
+        var exports = module.exports;
+        module.exports.test = "hello world";
         export default module.exports;
       `);
     });
