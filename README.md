@@ -90,3 +90,13 @@ export default module.exports;
     ]
   }
   ```
+
+- `exportsOnly` - Keep `require` calls and process exports only.
+
+  ```json
+  {
+    "plugins": [
+      ["transform-commonjs", { "onlyExports": true }]
+    ]
+  }
+  ```

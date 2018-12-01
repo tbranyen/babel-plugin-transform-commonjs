@@ -521,6 +521,33 @@ describe('Transform CommonJS', function() {
   });
 
   describe('Imports', () => {
+    it('can ignore imports if exportsOnly is set', async () => {
+      const input = `
+        var a = require('path');
+        exports.test = true;
+      `;
+
+      const { code } = await transformAsync(input, {
+        ...defaults,
+        plugins: [[plugin,  {
+          exportsOnly: true,
+        }]],
+      });
+
+      equal(code, format`
+        var module = {
+          exports: {}
+        };
+        var exports = module.exports;
+
+        var a = require('path');
+
+        exports.test = true;
+        export const test = exports.test;
+        export default module.exports;
+      `);
+    });
+
     it('can support top-level default', async () => {
       const input = `
         var a = require('path');
