@@ -83,7 +83,7 @@ export default declare((api, options) => {
 
                 // Look for `require()` any renaming is assumed to be intentionally
                 // done to break state kind of check, so we won't look for aliases.
-                if (t.isIdentifier(node.callee) && node.callee.name === 'require') {
+                if (!options.exportsOnly && t.isIdentifier(node.callee) && node.callee.name === 'require') {
                   // Require must be global for us to consider this a CommonJS
                   // module.
                   state.isCJS = true;
