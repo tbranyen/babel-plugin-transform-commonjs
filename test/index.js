@@ -151,13 +151,13 @@ describe('Transform CommonJS', function() {
 
         exports.Function = function () {};
 
-        export const Undefined = exports.Undefined;
-        export const Null = exports.Null;
-        export const Symbol = exports.Symbol;
-        export const Number = exports.Number;
-        export const Boolean = exports.Boolean;
-        export const String = exports.String;
-        export const Function = exports.Function;
+        export let Undefined = exports.Undefined;
+        export let Null = exports.Null;
+        export let Symbol = exports.Symbol;
+        export let Number = exports.Number;
+        export let Boolean = exports.Boolean;
+        export let String = exports.String;
+        export let Function = exports.Function;
         export default module.exports;
       `);
     });
@@ -304,123 +304,6 @@ describe('Transform CommonJS', function() {
     });
   });
 
-  describe('Bindings', () => {
-    it.skip('can support binding module and exports to the program', async () => {
-      const input = `
-        console.log('here');
-      `;
-
-      const { code, ast } = await transformAsync(input, {
-        ...defaults,
-        ast: true,
-      });
-
-      let bindings = null;
-
-      traverseAst(ast, {
-        Program(path) {
-          bindings = path.scope.getAllBindings();
-        }
-      });
-
-      equal(bindings.module.referenced, true);
-      equal(bindings.exports.referenced, false);
-
-      equal(code, format`
-        var module = {
-          exports: {}
-        };
-        var exports = module.exports;
-        console.log('here');
-        export default module.exports;
-      `);
-    });
-
-    it.skip('can support binding new identifiers created when hoisting', async () => {
-      const input = `
-        let traverse;
-        if (true) {
-          traverse = require('fs');
-        }
-      `;
-
-      const { code, ast } = await transformAsync(input, {
-        ...defaults,
-        ast: true,
-      });
-
-      let bindings = null;
-
-      traverseAst(ast, {
-        Program(path) {
-          bindings = path.scope.getAllBindings();
-        }
-      });
-
-      equal(bindings.traverse.referenced, false);
-      equal(bindings._fs.referenced, false);
-
-      equal(code, format`
-        import _fs from "fs";
-        var module = {
-          exports: {}
-        };
-        var exports = module.exports;
-        let traverse;
-
-        if (true) {
-          traverse = _fs;
-        }
-
-        export default module.exports;
-      `);
-    });
-
-    it.skip('can support tracking identifiers to assignments', async () => {
-      const input = `
-        function b() {}
-        exports.a = 'hello world';
-        exports.b = b;
-      `;
-
-      const { code, ast } = await transformAsync(input, {
-        ...defaults,
-        ast: true,
-      });
-
-      let bindings = null;
-      let programPath = null;
-
-      traverseAst(ast, {
-        Program(path) {
-          programPath = path;
-
-          // HELP!
-          // Trying to get this to reference function b() {}, exports.b = b;
-          // export const b = exports.b;
-          const binding = path.scope.getBinding('b');
-
-          // Remove all references to `b`.
-          binding.referencePaths.forEach(path => {
-            path.remove();
-          });
-
-          binding.path.remove();
-        }
-      });
-
-      equal(programPath.toString(), format`
-        var module = {
-          exports: {}
-        };
-        var exports = module.exports;
-        exports.a = 'hello world';
-        export const a = exports.a;
-        export default module.exports;
-      `);
-    });
-  });
-
   describe('Require', () => {
     it('can support a single require call', async () => {
       const input = `
@@ -514,7 +397,7 @@ describe('Transform CommonJS', function() {
         var exports = module.exports;
         var ArrayObservable_1 = _ArrayObservable;
         exports.of = ArrayObservable_1.ArrayObservable.of;
-        export const of = exports.of;
+        export let of = exports.of;
         export default module.exports;
       `);
     });
@@ -543,7 +426,7 @@ describe('Transform CommonJS', function() {
         var a = require('path');
 
         exports.test = true;
-        export const test = exports.test;
+        export let test = exports.test;
         export default module.exports;
       `);
     });
@@ -786,7 +669,7 @@ describe('Transform CommonJS', function() {
         };
         var exports = module.exports;
         exports.a = _a;
-        export const a = exports.a;
+        export let a = exports.a;
         export default module.exports;
       `);
     });
@@ -808,7 +691,7 @@ describe('Transform CommonJS', function() {
         {
           exports.a = true;
         }
-        export const a = exports.a;
+        export let a = exports.a;
         export default module.exports;
       `);
     });
@@ -830,12 +713,51 @@ describe('Transform CommonJS', function() {
         var exports = module.exports;
         exports.readFileSync = _readFileSync;
         console.log(module.exports.readFileSync);
-        export const readFileSync = exports.readFileSync;
+        export let readFileSync = exports.readFileSync;
         export default module.exports;
       `);
     });
 
-    it('can support assign', async () => {
+    it('can support conditional mutable bindings', async () => {
+      const input = `
+        if (hasNativePerformanceNow) {
+          var Performance = performance;
+          exports.unstable_now = function () {
+            return Performance.now();
+          };
+        } else {
+          exports.unstable_now = function () {
+            return localDate.now();
+          };
+        }
+      `;
+
+      const { code } = await transformAsync(input, { ...defaults });
+
+      equal(code, format`
+        var module = {
+          exports: {}
+        };
+        var exports = module.exports;
+
+        if (hasNativePerformanceNow) {
+          var Performance = performance;
+
+          exports.unstable_now = function () {
+            return Performance.now();
+          };
+        } else {
+          exports.unstable_now = function () {
+            return localDate.now();
+          };
+        }
+
+        export let unstable_now = exports.unstable_now;
+        export default module.exports;
+      `);
+    });
+
+    it.skip('can support defineProperty', async () => {
       /* Something needs to set state.isCJS for Object.defineProperty
        * and Object.defineProperties for this test to pass. */
       const input = `
@@ -852,6 +774,33 @@ describe('Transform CommonJS', function() {
         Object.defineProperty(exports, "__esModule", {
           value: true
         });
+        export let __esModule = exports.__esModule;
+        export default module.exports;
+      `);
+    });
+
+    it.skip('can support defineProperties', async () => {
+      /* Something needs to set state.isCJS for Object.defineProperty
+       * and Object.defineProperties for this test to pass. */
+      const input = `
+        Object.defineProperties(exports, {
+          __esModule: { value: true },
+        });
+      `;
+
+      const { code } = await transformAsync(input, { ...defaults });
+
+      equal(code, format`
+        var module = {
+          exports: {}
+        };
+        var exports = module.exports;
+        Object.defineProperties(exports, {
+          __esModule: {
+            value: true
+          }
+        });
+        export let __esModule = exports.__esModule;
         export default module.exports;
       `);
     });
@@ -872,7 +821,7 @@ describe('Transform CommonJS', function() {
         };
         var exports = module.exports;
         exports.a = _path;
-        export const a = exports.a;
+        export let a = exports.a;
         export default module.exports;
       `);
     });
@@ -911,7 +860,7 @@ describe('Transform CommonJS', function() {
         var exports = module.exports;
         var _a = _path;
         exports.a = _a;
-        export const a = exports.a;
+        export let a = exports.a;
         export default module.exports;
       `);
     });
@@ -931,7 +880,7 @@ describe('Transform CommonJS', function() {
         };
         var exports = module.exports;
         exports.readFileSync = _readFileSync;
-        export const readFileSync = exports.readFileSync;
+        export let readFileSync = exports.readFileSync;
         export default module.exports;
       `);
     });
@@ -976,7 +925,7 @@ describe('Transform CommonJS', function() {
         {
           exports.a = _path;
         }
-        export const a = exports.a;
+        export let a = exports.a;
         export default module.exports;
       `);
     });
@@ -994,8 +943,8 @@ describe('Transform CommonJS', function() {
         };
         var exports = module.exports;
         exports.a = exports.b = undefined;
-        export const a = exports.a;
-        export const b = exports.b;
+        export let a = exports.a;
+        export let b = exports.b;
         export default module.exports;
       `);
     });

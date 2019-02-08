@@ -7,7 +7,7 @@ export default declare((api, options) => {
   const state = {
     globals: new Set(),
     renamed: new Map(),
-    identifiers: new Map(),
+    identifiers: new Set(),
     isCJS: false,
   };
 
@@ -285,12 +285,6 @@ export default declare((api, options) => {
       ThisExpression: { enter },
       ReturnStatement: { enter },
 
-      Identifier: {
-        enter(path) {
-          state.identifiers.set(path, path.node.name);
-        }
-      },
-
       ImportSpecifier: {
         enter(path) {
           const { name } = path.node.local;
@@ -373,8 +367,9 @@ export default declare((api, options) => {
 
               // If we set an invalid name, then abort out.
               try {
+                const { name } = path.node.left.property;
                 const decl = t.exportNamedDeclaration(
-                  t.variableDeclaration('const', [
+                  t.variableDeclaration('let', [
                     t.variableDeclarator(
                       path.node.left.property,
                       t.memberExpression(
@@ -386,9 +381,12 @@ export default declare((api, options) => {
                   [],
                 );
 
-                path.scope.getProgramParent().path.pushContainer('body', decl);
+                if (!state.identifiers.has(name)) {
+                  path.scope.getProgramParent().path.pushContainer('body', decl);
+                  state.identifiers.add(name);
+                }
               }
-              catch (unhandledException) {}
+              catch {}
             }
           }
         }
