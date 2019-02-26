@@ -674,6 +674,29 @@ describe('Transform CommonJS', function() {
       `);
     });
 
+    it('can support duplicate named with initialization', async () => {
+      const input = `
+        exports.a = undefined;
+
+        var a = exports.a = () => {};
+      `;
+
+      const { code } = await transformAsync(input, { ...defaults });
+
+      equal(code, format`
+        var module = {
+          exports: {}
+        };
+        var exports = module.exports;
+        exports.a = undefined;
+
+        var _a = exports.a = () => {};
+
+        export let a = exports.a;
+        export default module.exports;
+      `);
+    });
+
     it('can support nested named', async () => {
       const input = `
         {

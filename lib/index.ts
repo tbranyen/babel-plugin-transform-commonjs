@@ -1,5 +1,5 @@
 import { declare } from '@babel/helper-plugin-utils';
-import { template, types as t } from '@babel/core';
+import { types as t } from '@babel/core';
 
 export default declare((api, options) => {
   api.assertVersion(7);
@@ -170,8 +170,6 @@ export default declare((api, options) => {
 
                     // Push the declaration in the root scope.
                     path.scope.getProgramParent().path.unshiftContainer('body', decl);
-
-                    const { keys } = Object;
 
                     // If we needed to generate or the change the id, then make an
                     // assignment so the values stay in sync.
@@ -367,7 +365,13 @@ export default declare((api, options) => {
 
               // If we set an invalid name, then abort out.
               try {
+                // Ensure that the scope is clean before we inject new,
+                // potentially conflicting, variables.
                 const { name } = path.node.left.property;
+                const newName = path.scope.generateUidIdentifier(name).name;
+
+                path.scope.rename(name, newName);
+
                 const decl = t.exportNamedDeclaration(
                   t.variableDeclaration('let', [
                     t.variableDeclarator(
