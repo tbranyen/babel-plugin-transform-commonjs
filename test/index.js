@@ -674,6 +674,51 @@ describe('Transform CommonJS', function() {
       `);
     });
 
+    it('can support named default', async () => {
+      const input = `
+        const { a } = require('path');
+
+        exports.default = a;
+      `;
+
+      const { code } = await transformAsync(input, { ...defaults });
+
+      equal(code, format`
+        import { a } from "path";
+        var module = {
+          exports: {}
+        };
+        var exports = module.exports;
+        exports.default = a;
+        export default module.exports;
+      `);
+    });
+
+    it('can support named default with default', async () => {
+      // export.default should be overridden
+      const input = `
+        const { a } = require('path');
+        const thing = 'thing';
+
+        exports.default = a;
+        module.exports = thing;
+      `;
+
+      const { code } = await transformAsync(input, { ...defaults });
+
+      equal(code, format`
+        import { a } from "path";
+        var module = {
+          exports: {}
+        };
+        var exports = module.exports;
+        const thing = 'thing';
+        exports.default = a;
+        module.exports = thing;
+        export default module.exports;
+      `);
+    });
+
     it('can support duplicate named with initialization', async () => {
       const input = `
         exports.a = undefined;
