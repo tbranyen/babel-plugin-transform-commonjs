@@ -110,6 +110,7 @@ export default declare((api, options) => {
                       t.callExpression(t.import(), [str])
                     );
 
+                    // @ts-ignore
                     newNode.__replaced = true;
 
                     path.replaceWith(newNode);
@@ -138,6 +139,7 @@ export default declare((api, options) => {
                       t.stringLiteral(str.value),
                     );
 
+                    // @ts-ignore
                     decl.__replaced = true;
 
                     path.scope.getProgramParent().path.unshiftContainer('body', decl);
@@ -147,6 +149,7 @@ export default declare((api, options) => {
                   else if (str) {
                     const { parentPath } = path;
                     const { left } = parentPath.node;
+                    // @ts-ignore
                     const oldId = !t.isMemberExpression(left) ? left : left.id;
 
                     // Default to the closest likely identifier.
@@ -166,6 +169,7 @@ export default declare((api, options) => {
                       t.stringLiteral(str.value),
                     );
 
+                    // @ts-ignore
                     decl.__replaced = true;
 
                     // Push the declaration in the root scope.
@@ -182,6 +186,7 @@ export default declare((api, options) => {
                         )
                       );
 
+                      // @ts-ignore
                       newNode.__replaced = true;
 
                       path.parentPath.parentPath.replaceWith(newNode);
@@ -247,7 +252,9 @@ export default declare((api, options) => {
             )
           ]);
 
+          // @ts-ignore
           exportsAlias.__replaced = true;
+          // @ts-ignore
           moduleExportsAlias.__replaced = true;
 
           // Add the `module` and `exports` globals into the program body,
@@ -274,6 +281,7 @@ export default declare((api, options) => {
           );
 
           path.node.__replaced = true;
+          // @ts-ignore
           defaultExport.__replaced = true;
 
           programPath.pushContainer('body', defaultExport);
@@ -335,7 +343,14 @@ export default declare((api, options) => {
             }
             // Check for regular exports
             else if (path.node.left.object.name === 'exports') {
-              if (exportsBinding) {
+              const { name } = path.node.left.property;
+              if (
+                exportsBinding
+                // If export is named "default" leave as is.
+                // It is not possible to export "default" as a named export.
+                // e.g. `export.default = 'a'`
+                || name === 'default'
+              ) {
                 return;
               }
 
@@ -367,7 +382,6 @@ export default declare((api, options) => {
               try {
                 // Ensure that the scope is clean before we inject new,
                 // potentially conflicting, variables.
-                const { name } = path.node.left.property;
                 const newName = path.scope.generateUidIdentifier(name).name;
 
                 path.scope.rename(name, newName);
