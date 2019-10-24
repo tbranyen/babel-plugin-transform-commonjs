@@ -4,7 +4,7 @@ const { default: traverseAst } = require('@babel/traverse');
 const { format } = require('./_utils');
 const plugin = require('../lib/index.ts');
 
-describe('Transform CommonJS', function() {
+describe('Transform CommonJS', function () {
   const defaults = {
     plugins: [plugin],
     sourceType: 'module',
@@ -278,17 +278,18 @@ describe('Transform CommonJS', function() {
         export default module.exports;
       `);
     });
+  });
 
+  describe('Support `this`', () => {
     it('can support exporting via `this`', async () => {
       const input = `
-        this.export = 'true';
+        this.name = 'true';
+        this.platform = {};
+        this.platform.os = 'linux';
       `;
 
       const { code } = await transformAsync(input, {
         ...defaults,
-        parserOpts: {
-          allowReturnOutsideFunction: true,
-        },
       });
 
       equal(code, format`
@@ -296,13 +297,43 @@ describe('Transform CommonJS', function() {
           exports: {}
         };
         var exports = module.exports;
-        (function () {
-          this.export = 'true';
-        }).call(module.exports);
+        exports.name = 'true';
+        exports.platform = {};
+        exports.platform.os = 'linux';
+        export let name = exports.name;
+        export let platform = exports.platform;
         export default module.exports;
       `);
     });
-  });
+
+    it('does not transform scoped `this`', async () => {
+      const input = `
+        (() => {
+          this.type = 'program'
+        })()
+        exports.name = 'babel'
+      `;
+
+      const { code } = await transformAsync(input, {
+        ...defaults,
+      });
+
+      equal(code, format`
+        var module = {
+          exports: {}
+        };
+        var exports = module.exports;
+
+        (() => {
+          this.type = 'program';
+        })();
+
+        exports.name = 'babel';
+        export let name = exports.name;
+        export default module.exports;
+      `);
+    });
+  })
 
   describe('Require', () => {
     it('can support a single require call', async () => {
@@ -412,7 +443,7 @@ describe('Transform CommonJS', function() {
 
       const { code } = await transformAsync(input, {
         ...defaults,
-        plugins: [[plugin,  {
+        plugins: [[plugin, {
           exportsOnly: true,
         }]],
       });
@@ -502,7 +533,7 @@ describe('Transform CommonJS', function() {
 
       const { code } = await transformAsync(input, {
         ...defaults,
-        plugins: [[plugin,  {
+        plugins: [[plugin, {
           synchronousImport: true,
         }]],
       });
