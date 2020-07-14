@@ -1,5 +1,6 @@
 import { declare } from '@babel/helper-plugin-utils';
 import { types as t } from '@babel/core';
+import { check } from 'reserved-words';
 
 export default declare((api, options) => {
   api.assertVersion(7);
@@ -385,6 +386,11 @@ export default declare((api, options) => {
                 const newName = path.scope.generateUidIdentifier(name).name;
 
                 path.scope.rename(name, newName);
+
+                // Check if this name is reserved, if so, then bail out.
+                if (check(name)) {
+                  return;
+                }
 
                 const decl = t.exportNamedDeclaration(
                   t.variableDeclaration('let', [
