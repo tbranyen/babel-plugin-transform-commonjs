@@ -630,6 +630,26 @@ describe('Transform CommonJS', function() {
       `);
     });
 
+    it.only('can support a reserved word identifier', async () => {
+      const input = `
+        exports.super = () => {};
+      `;
+
+      const { code } = await transformAsync(input, { ...defaults });
+
+      equal(code, format`
+        var module = {
+          exports: {}
+        };
+        var exports = module.exports;
+
+        exports.super = () => {};
+
+        export default module.exports;
+      `);
+
+    });
+
     it('can support nested default', async () => {
       const input = `
         if (true) {
