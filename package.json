@@ -28,7 +28,8 @@
   },
   "homepage": "https://github.com/tbranyen/babel-plugin-transform-commonjs#readme",
   "dependencies": {
-    "@babel/helper-plugin-utils": "^7.0.0"
+    "@babel/helper-plugin-utils": "^7.0.0",
+    "@babel/plugin-syntax-top-level-await": "^7.8.3"
   },
   "peerDependencies": {
     "@babel/core": ">=7"
