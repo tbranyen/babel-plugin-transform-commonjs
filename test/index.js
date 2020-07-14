@@ -502,9 +502,6 @@ describe('Transform CommonJS', function() {
 
       const { code } = await transformAsync(input, {
         ...defaults,
-        plugins: [[plugin,  {
-          synchronousImport: true,
-        }]],
       });
 
       equal(code, format`
@@ -535,6 +532,25 @@ describe('Transform CommonJS', function() {
       });
     });
 
+    it('can support interpolated require call with option and top-level await', async () => {
+      const input = `
+        var a = require('pat' + 'h');
+      `;
+
+      const { code } = await transformAsync(input, {
+        ...defaults,
+      });
+
+      equal(code, format`
+        var module = {
+          exports: {}
+        };
+        var exports = module.exports;
+        var a = await import('pat' + 'h');
+        export default module.exports;
+      `);
+    });
+
     it('can support interpolated require call with option', async () => {
       const input = `
         var a = require('pat' + 'h');
@@ -542,9 +558,6 @@ describe('Transform CommonJS', function() {
 
       const { code } = await transformAsync(input, {
         ...defaults,
-        plugins: [[plugin, {
-          synchronousImport: true,
-        }]]
       });
 
       equal(code, format`

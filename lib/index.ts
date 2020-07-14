@@ -88,26 +88,30 @@ export default declare((api, options) => {
                   // module.
                   state.isCJS = true;
 
+                  const innerValue: unknown = node.arguments[0];
+
                   // Check for nested string and template literals.
-                  const isString = t.isStringLiteral(node.arguments[0]);
-                  const isLiteral = t.isTemplateLiteral(node.arguments[0]);
+                  const isString = t.isStringLiteral(<any>innerValue);
+                  const isLiteral = t.isTemplateLiteral(<any>innerValue);
 
                   // Normalize the string value, default to the standard string
                   // literal format of `{ value: "" }`.
                   let str = null;
 
                   if (isString) {
-                    str = <t.StringLiteral>node.arguments[0];
+                    str = <t.StringLiteral>innerValue;
                   }
                   else if (isLiteral) {
                     str = {
-                      value: (<t.TemplateLiteral>node.arguments[0]).quasis[0].value.raw,
+                      value: (<t.TemplateLiteral>innerValue).quasis[0].value.raw,
                     };
                   }
-                  else if (options.synchronousImport) {
-                    const str = <t.StringLiteral>node.arguments[0];
+                  else {
+                    const str = <t.StringLiteral>innerValue;
                     const newNode = t.expressionStatement(
-                      t.callExpression(t.import(), [str])
+                      t.awaitExpression(
+                        t.callExpression(t.import(), [str])
+                      ),
                     );
 
                     // @ts-ignore
@@ -116,9 +120,6 @@ export default declare((api, options) => {
                     path.replaceWith(newNode);
 
                     return;
-                  }
-                  else {
-                    throw new Error(`Invalid require signature: ${path.toString()}`);
                   }
 
                   const specifiers = [];

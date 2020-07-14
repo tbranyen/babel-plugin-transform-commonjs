@@ -34,14 +34,14 @@ What not to expect:
 
 Notable features not supported:
 
-- Non-static requires are invalid and will raise an exception
 - Nested requires will always be hoisted, unless they are non-static, see above
-- Invalid named exports (`exports["I'mateapot"]`) will only be available on the default export
+- Invalid named exports (`exports["I'mateapot"]`) are only available on the default export
 
 Notable features supported:
 
 - Early return
 - Setting export values on `this`
+- Dynamic requires are supported
 
 ### Usage
 
@@ -76,20 +76,24 @@ export const readFileSync = _readFileSync;
 export default module.exports;
 ```
 
+### Dynamic imports
+
+Sometimes, when using CommonJS, developers will not know until runtime what the
+import identifier should be. For instance, imagine you're loading a number of
+modules from a loop.
+
+```js
+['home', 'about', 'contact'].forEach(page => require('./pages/' + page));
+```
+
+This would not be able to be transpiled into ES6, since the ES modules
+specification only allows static imports. 
+
+Note: you will need to use the
+[@babel/plugin-syntax-top-level-await](https://github.com/tc39/proposal-top-level-await)
+module in order to support the output generated using this approach.
+
 ### Options
-
-- `synchronousImport` - Convert non-static require to a compatible dynamic
-  import. If the bundler can inline and link synchronously, this should be
-  okay, although this will produce invalid code for any other case. Use with
-  caution!
-
-  ```json
-  {
-    "plugins": [
-      ["transform-commonjs", { "synchronousImport": true }]
-    ]
-  }
-  ```
 
 - `exportsOnly` - Keep `require` calls and process exports only.
 
