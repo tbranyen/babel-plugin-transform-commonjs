@@ -1,4 +1,4 @@
-const { throws, equal, deepEqual } = require('assert');
+const { equal, deepEqual, match } = require('assert');
 const { transformAsync } = require('@babel/core');
 const { default: traverseAst } = require('@babel/traverse');
 const { format } = require('./_utils');
@@ -485,7 +485,7 @@ describe('Transform CommonJS', function() {
       `;
 
       await transformAsync(input, { ...defaults }).catch(ex => {
-        equal(ex.toString(), `Error: Invalid require signature: require(name)`);
+        match(ex.toString(), /Invalid require signature: require\(name\)/);
       });
     });
 
@@ -531,7 +531,7 @@ describe('Transform CommonJS', function() {
       `;
 
       await transformAsync(input, { ...defaults }).catch(ex => {
-        equal(ex.toString(), `Error: Invalid require signature: require('pat' + 'h')`);
+        match(ex.toString(), /Invalid require signature: require\('pat' \+ 'h'\)/);
       });
     });
 
@@ -628,6 +628,26 @@ describe('Transform CommonJS', function() {
         module.exports = 'a';
         export default module.exports;
       `);
+    });
+
+    it('can support a reserved word identifier', async () => {
+      const input = `
+        exports.super = () => {};
+      `;
+
+      const { code } = await transformAsync(input, { ...defaults });
+
+      equal(code, format`
+        var module = {
+          exports: {}
+        };
+        var exports = module.exports;
+
+        exports.super = () => {};
+
+        export default module.exports;
+      `);
+
     });
 
     it('can support nested default', async () => {
