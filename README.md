@@ -96,7 +96,7 @@ export default module.exports;
   ```json
   {
     "plugins": [
-      ["transform-commonjs", { "onlyExports": true }]
+      ["transform-commonjs", { "exportsOnly": true }]
     ]
   }
   ```
