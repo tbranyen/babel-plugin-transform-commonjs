@@ -344,9 +344,14 @@ export default declare((api, options) => {
             }
             // Check for regular exports
             else if (path.node.left.object.name === 'exports') {
-              const { name } = path.node.left.property;
+              const { property, computed } = path.node.left;
+              const { name } = property;
+
               if (
                 exportsBinding
+                // Ignore computed properties
+                // e.g. `let e = 'name'; exports[e] = 'export'`
+                || computed
                 // If export is named "default" leave as is.
                 // It is not possible to export "default" as a named export.
                 // e.g. `export.default = 'a'`

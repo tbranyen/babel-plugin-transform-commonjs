@@ -302,6 +302,25 @@ describe('Transform CommonJS', function() {
         export default module.exports;
       `);
     });
+
+    it('can ignore computed export properties', async () => {
+      const input = `
+        const e = 'name';
+        exports[e] = 'export'
+      `;
+
+      const { code } = await transformAsync(input, { ...defaults });
+
+      equal(code, format`
+        var module = {
+          exports: {}
+        };
+        var exports = module.exports;
+        const e = 'name';
+        exports[e] = 'export';
+        export default module.exports;
+      `);
+    });
   });
 
   describe('Require', () => {
