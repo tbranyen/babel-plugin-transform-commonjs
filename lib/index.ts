@@ -12,59 +12,6 @@ export default declare((api, options) => {
     isCJS: false,
   };
 
-  const enter = path => {
-    let cursor = path;
-
-    // Find the closest function scope or parent.
-    do {
-      // Ignore block statements.
-      if (t.isBlockStatement(cursor.scope.path)) {
-        continue;
-      }
-
-      if (t.isFunction(cursor.scope.path) || t.isProgram(cursor.scope.path)) {
-        break;
-      }
-    } while (cursor = cursor.scope.path.parentPath);
-
-    if (t.isProgram(cursor.scope.path)) {
-      const nodes = [];
-      const inner = [];
-
-      // Break up the program, separate Nodes added by us from the nodes
-      // created by the user.
-      cursor.scope.path.node.body.filter(node => {
-        // Keep replaced nodes together, these will not be wrapped.
-        if (node.__replaced) {
-          nodes.push(node);
-        }
-        else {
-          inner.push(node);
-        }
-      });
-
-      const program = t.program([
-        ...nodes,
-        t.expressionStatement(
-          t.callExpression(
-            t.memberExpression(
-              t.functionExpression(
-                null,
-                [],
-                t.blockStatement(inner),
-              ),
-              t.identifier('call'),
-            ),
-            [t.identifier('module.exports')],
-          )
-        ),
-      ]);
-
-      cursor.scope.path.replaceWith(program);
-      state.isCJS = true;
-    }
-  };
-
   return {
     post() {
       state.globals.clear();
@@ -73,10 +20,11 @@ export default declare((api, options) => {
       state.isCJS = false;
     },
 
+    name: 'transform-commonjs',
+
     visitor: {
       Program: {
         exit(path) {
-
           path.traverse({
             CallExpression: {
               exit(path) {
@@ -289,8 +237,60 @@ export default declare((api, options) => {
         }
       },
 
-      ThisExpression: { enter },
-      ReturnStatement: { enter },
+      ReturnStatement: {
+        enter(path) {
+          let cursor = path;
+
+          // Find the closest function scope or parent.
+          do {
+            // Ignore block statements.
+            if (t.isBlockStatement(cursor.scope.path)) {
+              continue;
+            }
+
+            if (t.isFunction(cursor.scope.path) || t.isProgram(cursor.scope.path)) {
+              break;
+            }
+          } while (cursor = cursor.scope.path.parentPath);
+
+          if (t.isProgram(cursor.scope.path)) {
+            const nodes = [];
+            const inner = [];
+
+            // Break up the program, separate Nodes added by us from the nodes
+            // created by the user.
+            cursor.scope.path.node.body.forEach(node => {
+              // Keep replaced nodes together, these will not be wrapped.
+              if (node.__replaced) {
+                nodes.push(node);
+              }
+              else {
+                inner.push(node);
+              }
+            });
+
+            const program = t.program([
+              ...nodes,
+              t.expressionStatement(
+                t.callExpression(
+                  t.memberExpression(
+                    t.functionExpression(
+                      null,
+                      [],
+                      t.blockStatement(inner),
+                    ),
+                    t.identifier('call'),
+                  ),
+                  [t.identifier('module.exports')],
+                )
+              ),
+            ]);
+
+            cursor.scope.path.replaceWith(program);
+            state.isCJS = true;
+          }
+        }
+      },
 
       ImportSpecifier: {
         enter(path) {
@@ -306,10 +306,22 @@ export default declare((api, options) => {
         }
       },
 
-      AssignmentExpression: {
+      "AssignmentExpression|ThisExpression": {
         enter(path) {
           if (path.node.__ignore) {
             return;
+          }
+
+
+          if (t.isThisExpression(path.node)) {
+            // Only replace top level `this` exports
+            if (t.isProgram(path.scope.path)) {
+              // Replace `this` with `exports`
+              // e.g. `this.name = 'true'` => `exports.name = 'true'`
+              const [leftNode] = path.replaceWith(t.identifier('exports'));
+              // Replace path with new parent expression
+              path = leftNode.parentPath.parentPath;
+            }
           }
 
           path.node.__ignore = true;
@@ -363,7 +375,7 @@ export default declare((api, options) => {
                 (
                   path.scope.getProgramParent().hasBinding(prop.name) ||
                   state.globals.has(prop.name)
-                // Don't rename `undefined`.
+                  // Don't rename `undefined`.
                 ) && prop.name !== 'undefined'
               ) {
 
@@ -410,7 +422,7 @@ export default declare((api, options) => {
                   state.identifiers.add(name);
                 }
               }
-              catch {}
+              catch { }
             }
           }
         }
